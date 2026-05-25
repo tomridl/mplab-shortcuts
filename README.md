@@ -141,6 +141,12 @@ The following commands are available via the Command Palette (Ctrl/Cmd+Shift+P):
 
 ## Release Notes
 
+### 0.3.2
+
+- **Flash Unified Hex**: recognize newer `.mplab.json` tool format
+  (e.g. `"tool": "ICD 5"`) in addition to the older `"ICD5Tool"` variant —
+  the mapping now normalizes whitespace + trailing `Tool` before lookup.
+
 ### 0.3.1
 
 - **Flash Unified Hex** now works on projects without linked loadables (e.g.

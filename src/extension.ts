@@ -801,24 +801,33 @@ function resolveIpecmd(): string | undefined {
 	return undefined;
 }
 
-/** Map MPLAB tool identifiers (as found in .mplab.json) to ipecmd -TP codes. */
+/**
+ * Map MPLAB tool identifiers (as found in .mplab.json) to ipecmd -TP codes.
+ * MPLAB writes the tool name inconsistently across schema versions —
+ * e.g. "ICD5Tool" in older projects, "ICD 5" in newer ones — so we
+ * normalize (strip whitespace, strip trailing "Tool", lowercase) before
+ * looking up.
+ */
 function mapMplabToolToIpecmd(name?: string): string | undefined {
 	if (!name) {
 		return undefined;
 	}
+	const normalized = name.replace(/\s+/g, '').replace(/Tool$/i, '').toLowerCase();
 	const table: Record<string, string> = {
-		'PICkit3Tool': 'PICkit3',
-		'PICkit4Tool': 'PK4',
-		'PICkit5Tool': 'PK5',
-		'ICD3Tool': 'ICD3',
-		'ICD4Tool': 'ICD4',
-		'ICD5Tool': 'ICD5',
-		'SnapTool': 'SN',
-		'RealICETool': 'RealICE',
-		'JTAGICE3Tool': 'JTAGICE3',
-		'Simulator': 'SIM'
+		'pickit3': 'PICkit3',
+		'pickit4': 'PK4',
+		'pickit5': 'PK5',
+		'icd3': 'ICD3',
+		'icd4': 'ICD4',
+		'icd5': 'ICD5',
+		'snap': 'SN',
+		'mplabsnap': 'SN',
+		'realice': 'RealICE',
+		'jtagice3': 'JTAGICE3',
+		'simulator': 'SIM',
+		'sim': 'SIM'
 	};
-	return table[name];
+	return table[normalized];
 }
 
 async function flashUnified() {

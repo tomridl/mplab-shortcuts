@@ -209,6 +209,20 @@ ipecmd.sh -TP<code> -P<device> -F<absolute path to unified.hex> -M -OL
   **Flash Unified Hex**, confirm the ipecmd output in the **MPLAB Shortcuts**
   channel and that the device starts running.
 
+## 0.3.2 — Recognize the newer "ICD 5" tool-name format
+- Reported failure: on `dr1-security-app.X` the command bailed with
+  `Cannot determine programmer ... .mplab.json tool="ICD 5"`. The literal
+  string in the live .mplab.json is `"tool": "ICD 5"` (space, no Tool
+  suffix), but the table only had `ICD5Tool`.
+- Schema variance confirmed by surveying live projects:
+  - `qt6-blue-app.X`, `qt6-green-app.X`, `qt6-can-test.X`, `DR1_SWAT.X` use
+    `"ICD5Tool"` / `"ICD4Tool"`.
+  - `dr1-security-app.X` uses `"ICD 5"`.
+- Fix: `mapMplabToolToIpecmd` normalizes (strip whitespace, strip trailing
+  `Tool`, lowercase) before lookup. So `ICD 5`, `ICD5`, `ICD5Tool` all map
+  to `ICD5`. Same treatment for PICkit3/4/5, Snap (+ `MPLAB Snap`), Real ICE,
+  JTAGICE3, Simulator.
+
 ## 0.3.1 — Flash Unified works on app-only projects too
 - Reported failure: on `dr1-security-app.X` (the loadable application — no
   loadables of its own) the command bailed with "No linked (loadable) projects

@@ -4,6 +4,15 @@ All notable changes to the "mplab-shortcuts" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.2]
+
+- **Flash Unified Hex** now recognizes the newer MPLAB tool-name format
+  (e.g. `"tool": "ICD 5"` with whitespace, no `Tool` suffix) in addition to
+  the older `"ICD5Tool"` style. The mapping normalizes whitespace + trailing
+  `Tool` before lookup, so `ICD 5`, `ICD5`, and `ICD5Tool` all resolve to the
+  ipecmd code `ICD5` (same for PICkit 3/4/5, Snap, Real ICE, JTAGICE3,
+  Simulator).
+
 ## [0.3.1]
 
 - **Flash Unified Hex** now accepts projects without linked loadables. The
