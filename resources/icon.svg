@@ -1,0 +1,28 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="256" height="256" rx="44" fill="#1e1e2e"/>
+
+  <!-- Pins (left + right side of the chip) -->
+  <g fill="#89b4fa">
+    <rect x="40" y="86"  width="26" height="10" rx="2"/>
+    <rect x="40" y="112" width="26" height="10" rx="2"/>
+    <rect x="40" y="138" width="26" height="10" rx="2"/>
+    <rect x="40" y="164" width="26" height="10" rx="2"/>
+    <rect x="190" y="86"  width="26" height="10" rx="2"/>
+    <rect x="190" y="112" width="26" height="10" rx="2"/>
+    <rect x="190" y="138" width="26" height="10" rx="2"/>
+    <rect x="190" y="164" width="26" height="10" rx="2"/>
+  </g>
+
+  <!-- Chip body -->
+  <rect x="66" y="62" width="124" height="136" rx="14"
+        fill="#313244" stroke="#89b4fa" stroke-width="6"/>
+
+  <!-- Pin-1 indicator -->
+  <circle cx="82" cy="78" r="6" fill="#f38ba8"/>
+
+  <!-- Lightning bolt — slightly outlined so it reads against any background -->
+  <path d="M 142 80 L 92 144 L 130 144 L 118 200 L 172 124 L 134 124 Z"
+        fill="#f9e2af"
+        stroke="#1e1e2e" stroke-width="5" stroke-linejoin="round"/>
+</svg>
