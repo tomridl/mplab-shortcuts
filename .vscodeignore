@@ -9,3 +9,9 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+FLASH_PLAN.md
+FLASH_TODO.json
+AUTOUPDATE_PLAN.md
+AUTOUPDATE_TODO.json
+SESSION_NOTES.md
+resources/icon.svg
