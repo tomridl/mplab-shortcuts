@@ -209,6 +209,18 @@ ipecmd.sh -TP<code> -P<device> -F<absolute path to unified.hex> -M -OL
   **Flash Unified Hex**, confirm the ipecmd output in the **MPLAB Shortcuts**
   channel and that the device starts running.
 
+## 0.3.4 — Build Linked + Merge picker also lists configs without loadables
+- Reported failure: clicking Build Linked + Merge on dr1-security-app.X
+  warned "No linked (loadable) projects found in any configuration of
+  dr1-security-app." with no chance to pick a config.
+- Fix: the webview "buildMerge" handler and the
+  `mplab-shortcuts.buildMerge` command now pass
+  `{ allowNoLoadables: true, pickPlaceholder: ... }` to
+  `buildLinkedAndMerge`. When the picked config has no loadables the build
+  runs without the hexmate step and the "Built: ..." toast appears instead
+  of "Unified hex created: ...". Behavior on configs that do have loadables
+  is unchanged (still builds linked + main + merges).
+
 ## 0.3.3 — Strip PIC prefix for ipecmd -P
 - Reported failure: ipecmd ran but errored with
   `Could not find device:PICPIC18F26K83` and

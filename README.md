@@ -30,11 +30,12 @@ it for you:
 - Reads the active project's `.vscode/<project>.mplab.json`
 - Finds linked (loadable) projects per configuration — the `projectType: "loadable"`
   entries and their `dependentConfigurationName`
-- Auto-selects the configuration that has linked projects (prompts if more than one)
+- Prompts you to pick any configuration (or auto-selects if there's only one)
 - Builds each **linked project first**, then the **main project**
   (`cmake --build <project>/_build/<project>/<config>`)
-- Merges the resulting hexes with `hexmate` into
-  `out/<main project>/<config>-unified.hex`
+- If the picked configuration has linked loadables, merges the resulting hexes
+  with `hexmate` into `out/<main project>/<config>-unified.hex`; otherwise the
+  built `out/<main project>/<config>.hex` is the final output
 
 Progress and build output are shown in the **MPLAB Shortcuts** output channel. The
 per-config build directories must already have been emitted by MPLAB (open/emit the
@@ -140,6 +141,13 @@ The following commands are available via the Command Palette (Ctrl/Cmd+Shift+P):
 | `MPLAB: List Available Commands` | Show all available MPLAB commands |
 
 ## Release Notes
+
+### 0.3.4
+
+- **Build Linked + Merge** now offers the configuration picker on every
+  project, including app-only projects without linked loadables. When the
+  picked configuration has no loadables, the command builds it and stops
+  (no `hexmate` merge).
 
 ### 0.3.3
 

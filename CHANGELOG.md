@@ -4,6 +4,14 @@ All notable changes to the "mplab-shortcuts" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.4]
+
+- **Build Linked + Merge** now lists every configuration in the picker (was
+  previously filtered to those with linked loadables, which bailed out early
+  on app-only projects). When the picked configuration has no loadables, the
+  command just builds it and stops — no `hexmate` merge, no "Unified hex"
+  toast. When it has loadables, the merge step runs as before.
+
 ## [0.3.3]
 
 - **Flash Unified Hex** strips the leading `PIC` from the device name before

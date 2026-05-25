@@ -34,7 +34,10 @@ class MplabShortcutsViewProvider implements vscode.WebviewViewProvider {
 					await exportHexFile();
 					break;
 				case 'buildMerge':
-					await buildLinkedAndMerge();
+					await buildLinkedAndMerge({
+						allowNoLoadables: true,
+						pickPlaceholder: 'Select the configuration to build (merges linked loadables if present)'
+					});
 					break;
 				case 'flashDevice':
 					await flashDevice();
@@ -195,7 +198,10 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand('mplab-shortcuts.buildMerge', async () => {
-			await buildLinkedAndMerge();
+			await buildLinkedAndMerge({
+				allowNoLoadables: true,
+				pickPlaceholder: 'Select the configuration to build (merges linked loadables if present)'
+			});
 		})
 	);
 
