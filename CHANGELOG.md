@@ -4,6 +4,14 @@ All notable changes to the "mplab-shortcuts" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.1]
+
+- **Flash Unified Hex** now accepts projects without linked loadables. The
+  config picker lists every configuration in `.vscode/<project>.mplab.json`;
+  when the picked config has no loadables, the build step skips `hexmate` and
+  flashes `out/<project>/<config>.hex` directly. The "Build Linked + Merge"
+  button still requires loadables (unchanged behavior).
+
 ## [0.3.0]
 
 - Added **Flash Unified Hex** command and side-panel button: runs the Build

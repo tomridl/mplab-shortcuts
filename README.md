@@ -10,7 +10,7 @@ A VS Code extension that adds a convenient side panel with quick-access buttons 
 - **Export Hex**: Export your compiled `.hex` file with a smart save dialog that suggests a filename based on your project name and firmware version
 - **Build Linked + Merge (Unified Hex)**: Build any linked (loadable) projects, then the main project, and merge the results into a single unified `.hex` with `hexmate` — e.g. combine a bootloader with its application image
 - **Flash Device**: Pick a build configuration, build it (and any linked loadables), then program the connected programmer via MPLAB's built-in **Program Device** command
-- **Flash Unified Hex**: Build + merge linked loadables into a unified hex, then flash that exact file directly via Microchip's `ipecmd` CLI — independent of MPLAB IDE's active configuration
+- **Flash Unified Hex**: Pick a configuration, build it (merging linked loadables into a unified hex when present), then flash that exact file directly via Microchip's `ipecmd` CLI — independent of MPLAB IDE's active configuration
 - **Auto-update from GitHub Releases**: The extension periodically checks its GitHub repository for a newer `.vsix` and prompts to install — no Marketplace required
 
 ### Export Hex Features
@@ -54,23 +54,24 @@ programmer selection — the same one used by MPLAB's own **Program Device** act
 
 ### Flash Unified Hex
 
-Same flow as **Build Linked + Merge**, but after producing the unified hex it
-flashes that exact file via Microchip's CLI programmer (`ipecmd.sh`). Unlike
-**Flash Device**, this does not depend on MPLAB IDE's active configuration —
-the hex you just built is the hex that gets programmed.
+Flashes the current project via Microchip's CLI programmer (`ipecmd.sh`).
+Unlike **Flash Device**, this does not depend on MPLAB IDE's active
+configuration — the hex you just built is the hex that gets programmed.
 
 What it does:
 
-- Runs the full **Build Linked + Merge** flow (config picker → build linked +
-  main → `hexmate` → `out/<project>/<config>-unified.hex`)
-- Reads the picked configuration from `.vscode/<project>.mplab.json` to get the
-  target **device** (`device` or `targetDevice`) and the **tool** (`tool` or
-  `platformTool`)
+- Prompts you to pick **any** configuration in `.vscode/<project>.mplab.json`
+- Builds the picked configuration (and any linked loadable projects)
+- If the configuration has linked loadables, merges them with `hexmate` into
+  `out/<project>/<config>-unified.hex`; otherwise uses the plain
+  `out/<project>/<config>.hex` directly
+- Reads the **device** (`device` or `targetDevice`) and the **tool** (`tool` or
+  `platformTool`) from the picked configuration
 - Maps the MPLAB tool name (e.g., `ICD5Tool`, `PICkit4Tool`, `SnapTool`) to the
   corresponding `ipecmd` `-TP` code; if the configuration has no specific tool
   (`default-tool`) it falls back to `mplab-shortcuts.flashUnified.tool`
-- Runs `ipecmd.sh -TP<tool> -P<device> -F<unified.hex> -M -OL`, streaming output
-  to the **MPLAB Shortcuts** channel
+- Runs `ipecmd.sh -TP<tool> -P<device> -F<hex> -M -OL`, streaming output to the
+  **MPLAB Shortcuts** channel
 
 Requires `ipecmd.sh` from MPLAB X (auto-detected from
 `/Applications/microchip/mplabx/v*/mplab_platform/mplab_ipe/`, override via
@@ -134,11 +135,18 @@ The following commands are available via the Command Palette (Ctrl/Cmd+Shift+P):
 | `MPLAB: Export Hex` | Export the hex file with version info |
 | `MPLAB: Build Linked + Merge (Unified Hex)` | Build linked (loadable) projects, then the main project, and merge into a unified hex |
 | `MPLAB: Flash Device` | Pick a configuration, build it, and flash via MPLAB's Program Device |
-| `MPLAB: Flash Unified Hex` | Build + merge linked loadables into a unified hex, then flash it directly via `ipecmd` |
+| `MPLAB: Flash Unified Hex` | Pick a configuration, build it (merging linked loadables when present), then flash via `ipecmd` |
 | `MPLAB: Check for Updates` | Force an immediate GitHub Releases check for a newer version |
 | `MPLAB: List Available Commands` | Show all available MPLAB commands |
 
 ## Release Notes
+
+### 0.3.1
+
+- **Flash Unified Hex** now works on projects without linked loadables (e.g.
+  app-only projects): it builds the picked configuration and flashes the
+  plain `out/<project>/<config>.hex` directly. When loadables are present it
+  still merges with `hexmate` and flashes the unified hex.
 
 ### 0.3.0
 

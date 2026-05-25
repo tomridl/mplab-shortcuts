@@ -515,12 +515,18 @@ function runStreamed(cmd: string, args: string[], cwd: string, out: vscode.Outpu
 }
 
 interface BuildMergeResult {
-	unifiedHex: string;
+	/** Hex file ready to flash: unified.hex when loadables were merged, else the main project's compiled hex. */
+	hexPath: string;
 	configName: string;
 	mplab: any;
 }
 
-async function buildLinkedAndMerge(options?: { silentOnSuccess?: boolean }): Promise<BuildMergeResult | undefined> {
+async function buildLinkedAndMerge(options?: {
+	silentOnSuccess?: boolean;
+	/** When true, allow configurations without linked loadables (no merge happens — just build + return the main hex). */
+	allowNoLoadables?: boolean;
+	pickPlaceholder?: string;
+}): Promise<BuildMergeResult | undefined> {
 	const workspaceFolders = vscode.workspace.workspaceFolders;
 	if (!workspaceFolders || workspaceFolders.length === 0) {
 		vscode.window.showErrorMessage('No workspace folder open.');
@@ -543,21 +549,26 @@ async function buildLinkedAndMerge(options?: { silentOnSuccess?: boolean }): Pro
 		return undefined;
 	}
 
-	// Find configurations that have linked (loadable) projects
 	const configNames: string[] = (mplab.configurations || []).map((c: any) => c.name);
-	const mergeable = configNames.filter((name) => getLinkedProjects(mplab, name).length > 0);
+	const candidates = options?.allowNoLoadables
+		? configNames
+		: configNames.filter((name) => getLinkedProjects(mplab, name).length > 0);
 
-	if (mergeable.length === 0) {
-		vscode.window.showWarningMessage(
-			`No linked (loadable) projects found in any configuration of ${mainProject}.`
-		);
+	if (candidates.length === 0) {
+		if (options?.allowNoLoadables) {
+			vscode.window.showWarningMessage(`No configurations found in ${mainProject}.`);
+		} else {
+			vscode.window.showWarningMessage(
+				`No linked (loadable) projects found in any configuration of ${mainProject}.`
+			);
+		}
 		return undefined;
 	}
 
-	let configName: string | undefined = mergeable[0];
-	if (mergeable.length > 1) {
-		configName = await vscode.window.showQuickPick(mergeable, {
-			placeHolder: 'Select the configuration to build and merge'
+	let configName: string | undefined = candidates[0];
+	if (candidates.length > 1) {
+		configName = await vscode.window.showQuickPick(candidates, {
+			placeHolder: options?.pickPlaceholder ?? 'Select the configuration to build and merge'
 		});
 		if (!configName) {
 			return undefined;
@@ -568,24 +579,33 @@ async function buildLinkedAndMerge(options?: { silentOnSuccess?: boolean }): Pro
 
 	// Resolve tools
 	const cmake = resolveCmake();
-	const hexmate = resolveHexmate();
-	if (!hexmate) {
-		vscode.window.showErrorMessage(
-			'hexmate not found. Set "mplab-shortcuts.hexmatePath" to your XC8 hexmate executable.'
-		);
-		return undefined;
+	let hexmate: string | undefined;
+	if (linked.length > 0) {
+		hexmate = resolveHexmate();
+		if (!hexmate) {
+			vscode.window.showErrorMessage(
+				'hexmate not found. Set "mplab-shortcuts.hexmatePath" to your XC8 hexmate executable.'
+			);
+			return undefined;
+		}
 	}
 
 	const out = getOutputChannel();
 	out.clear();
 	out.show(true);
-	out.appendLine(`Build + merge for ${mainProject}:${configName}`);
-	out.appendLine(`Linked projects: ${linked.map(l => `${l.projectName}:${l.config}`).join(', ') || '(none)'}`);
+	out.appendLine(`${linked.length > 0 ? 'Build + merge' : 'Build'} for ${mainProject}:${configName}`);
+	if (linked.length > 0) {
+		out.appendLine(`Linked projects: ${linked.map(l => `${l.projectName}:${l.config}`).join(', ')}`);
+	}
 
 	return await vscode.window.withProgress(
-		{ location: vscode.ProgressLocation.Notification, title: 'MPLAB: Build linked + merge', cancellable: false },
+		{
+			location: vscode.ProgressLocation.Notification,
+			title: linked.length > 0 ? 'MPLAB: Build linked + merge' : 'MPLAB: Build',
+			cancellable: false
+		},
 		async (progress): Promise<BuildMergeResult | undefined> => {
-			// Build linked projects first, then the main project
+			// Build linked projects first (if any), then the main project
 			const buildOrder = [
 				...linked.map(l => ({ project: l.projectName, config: l.config })),
 				{ project: mainProject, config: configName! }
@@ -609,10 +629,10 @@ async function buildLinkedAndMerge(options?: { silentOnSuccess?: boolean }): Pro
 			}
 
 			// Collect hex files (out/<project>/<config>.hex)
-			const hexPath = (project: string, config: string) =>
+			const hexFor = (project: string, config: string) =>
 				path.join(wsPath, 'out', project, `${config}.hex`);
-			const mainHex = hexPath(mainProject, configName!);
-			const linkedHexes = linked.map(l => hexPath(l.projectName, l.config));
+			const mainHex = hexFor(mainProject, configName!);
+			const linkedHexes = linked.map(l => hexFor(l.projectName, l.config));
 
 			for (const h of [mainHex, ...linkedHexes]) {
 				if (!fs.existsSync(h)) {
@@ -621,11 +641,20 @@ async function buildLinkedAndMerge(options?: { silentOnSuccess?: boolean }): Pro
 				}
 			}
 
+			// No loadables → main project's hex is the image we want; skip hexmate.
+			if (linked.length === 0) {
+				out.appendLine(`\nHex ready: ${mainHex}`);
+				if (!options?.silentOnSuccess) {
+					vscode.window.showInformationMessage(`Built: ${mainHex}`);
+				}
+				return { hexPath: mainHex, configName: configName!, mplab };
+			}
+
 			// Merge with hexmate (linked images + bootloader -> unified)
 			const unifiedHex = path.join(wsPath, 'out', mainProject, `${configName}-unified.hex`);
 			progress.report({ message: 'Merging with hexmate' });
 			out.appendLine(`\n=== Merging -> ${unifiedHex} ===`);
-			const merged = await runStreamed(hexmate, [...linkedHexes, mainHex, `-o${unifiedHex}`], wsPath, out);
+			const merged = await runStreamed(hexmate!, [...linkedHexes, mainHex, `-o${unifiedHex}`], wsPath, out);
 			if (!merged) {
 				vscode.window.showErrorMessage('hexmate merge failed (see "MPLAB Shortcuts" output).');
 				return undefined;
@@ -635,7 +664,7 @@ async function buildLinkedAndMerge(options?: { silentOnSuccess?: boolean }): Pro
 			if (!options?.silentOnSuccess) {
 				vscode.window.showInformationMessage(`Unified hex created: ${unifiedHex}`);
 			}
-			return { unifiedHex, configName: configName!, mplab };
+			return { hexPath: unifiedHex, configName: configName!, mplab };
 		}
 	);
 }
@@ -799,7 +828,11 @@ async function flashUnified() {
 		return;
 	}
 
-	const built = await buildLinkedAndMerge({ silentOnSuccess: true });
+	const built = await buildLinkedAndMerge({
+		silentOnSuccess: true,
+		allowNoLoadables: true,
+		pickPlaceholder: 'Select the configuration to build and flash'
+	});
 	if (!built) {
 		return; // error already shown / user cancelled
 	}
@@ -846,16 +879,16 @@ async function flashUnified() {
 
 	const out = getOutputChannel();
 	out.show(true);
-	out.appendLine(`\n=== Flashing unified hex via ipecmd ===`);
+	out.appendLine(`\n=== Flashing hex via ipecmd ===`);
 	out.appendLine(`Tool: ${toolCode}   Device: ${device}`);
-	out.appendLine(`Hex:  ${built.unifiedHex}`);
+	out.appendLine(`Hex:  ${built.hexPath}`);
 
 	await vscode.window.withProgress(
-		{ location: vscode.ProgressLocation.Notification, title: `MPLAB: Flash unified (${toolCode} → ${device})`, cancellable: false },
+		{ location: vscode.ProgressLocation.Notification, title: `MPLAB: Flash (${toolCode} → ${device})`, cancellable: false },
 		async () => {
 			const ok = await runStreamed(
 				ipecmd,
-				[`-TP${toolCode}`, `-P${device}`, `-F${built.unifiedHex}`, '-M', '-OL'],
+				[`-TP${toolCode}`, `-P${device}`, `-F${built.hexPath}`, '-M', '-OL'],
 				workspaceFolders[0].uri.fsPath,
 				out
 			);
@@ -864,7 +897,7 @@ async function flashUnified() {
 				return;
 			}
 			vscode.window.showInformationMessage(
-				`Flashed ${path.basename(built.unifiedHex)} via ${toolCode}.`
+				`Flashed ${path.basename(built.hexPath)} via ${toolCode}.`
 			);
 		}
 	);

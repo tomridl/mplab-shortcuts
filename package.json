@@ -2,7 +2,7 @@
   "name": "mplab-shortcuts",
   "displayName": "MPLAB Shortcuts",
   "description": "Some additional shortcuts for MPLAB extension",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "tomridl",
   "license": "MIT",
   "repository": {

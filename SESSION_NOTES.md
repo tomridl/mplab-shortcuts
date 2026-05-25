@@ -208,3 +208,20 @@ ipecmd.sh -TP<code> -P<device> -F<absolute path to unified.hex> -M -OL
   step for the user: open a bootloader project with linked loadables, click
   **Flash Unified Hex**, confirm the ipecmd output in the **MPLAB Shortcuts**
   channel and that the device starts running.
+
+## 0.3.1 — Flash Unified works on app-only projects too
+- Reported failure: on `dr1-security-app.X` (the loadable application — no
+  loadables of its own) the command bailed with "No linked (loadable) projects
+  found in any configuration of dr1-security-app." User wanted to still pick
+  a configuration and flash via ipecmd.
+- Fix: `buildLinkedAndMerge` now takes `allowNoLoadables` (default false).
+  When true, the picker lists all configurations; if the picked config has no
+  loadables we skip `hexmate` entirely and return the plain
+  `out/<project>/<config>.hex`. `flashUnified` passes `allowNoLoadables: true`
+  plus a "Select the configuration to build and flash" placeholder. The
+  existing **Build Linked + Merge** button is unchanged (it still requires
+  loadables, since merging is its whole point).
+- Result field renamed `unifiedHex` → `hexPath` (it's no longer always
+  unified). flashUnified output channel header updated from "Flashing unified
+  hex via ipecmd" → "Flashing hex via ipecmd"; toast already uses
+  `path.basename` so it didn't need a change.
