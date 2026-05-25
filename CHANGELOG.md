@@ -4,6 +4,13 @@ All notable changes to the "mplab-shortcuts" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.3]
+
+- **Flash Unified Hex** strips the leading `PIC` from the device name before
+  passing it to `ipecmd -P`. `ipecmd` prepends `PIC` to whatever it receives,
+  so `PIC18F26K83` from `.mplab.json` was being expanded to `PICPIC18F26K83`
+  and failing to locate the part / DFP.
+
 ## [0.3.2]
 
 - **Flash Unified Hex** now recognizes the newer MPLAB tool-name format

@@ -141,6 +141,13 @@ The following commands are available via the Command Palette (Ctrl/Cmd+Shift+P):
 
 ## Release Notes
 
+### 0.3.3
+
+- **Flash Unified Hex**: strip the leading `PIC` from the device name before
+  passing to `ipecmd -P` (ipecmd reinserts the prefix itself, so passing the
+  full MPLAB name resulted in `PICPIC18F26K83` and a "Could not find device"
+  error).
+
 ### 0.3.2
 
 - **Flash Unified Hex**: recognize newer `.mplab.json` tool format

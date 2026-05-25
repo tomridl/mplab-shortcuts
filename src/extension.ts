@@ -852,13 +852,18 @@ async function flashUnified() {
 		return;
 	}
 
-	const device: string | undefined = config.device || config.targetDevice;
-	if (!device) {
+	const rawDevice: string | undefined = config.device || config.targetDevice;
+	if (!rawDevice) {
 		vscode.window.showErrorMessage(
 			`No device specified in configuration "${built.configName}" (.mplab.json: device/targetDevice).`
 		);
 		return;
 	}
+	// ipecmd prepends "PIC" to whatever -P value it receives, so passing
+	// "PIC18F26K83" becomes "PICPIC18F26K83" and fails to locate the part.
+	// MPLAB stores the full name in .mplab.json — strip the leading "PIC" so
+	// ipecmd reconstructs the correct device name.
+	const device = rawDevice.replace(/^PIC/i, '');
 
 	const mplabTool: string | undefined = config.tool || config.platformTool;
 	let toolCode = mapMplabToolToIpecmd(mplabTool);
@@ -889,11 +894,11 @@ async function flashUnified() {
 	const out = getOutputChannel();
 	out.show(true);
 	out.appendLine(`\n=== Flashing hex via ipecmd ===`);
-	out.appendLine(`Tool: ${toolCode}   Device: ${device}`);
+	out.appendLine(`Tool: ${toolCode}   Device: ${rawDevice}`);
 	out.appendLine(`Hex:  ${built.hexPath}`);
 
 	await vscode.window.withProgress(
-		{ location: vscode.ProgressLocation.Notification, title: `MPLAB: Flash (${toolCode} → ${device})`, cancellable: false },
+		{ location: vscode.ProgressLocation.Notification, title: `MPLAB: Flash (${toolCode} → ${rawDevice})`, cancellable: false },
 		async () => {
 			const ok = await runStreamed(
 				ipecmd,

@@ -209,6 +209,21 @@ ipecmd.sh -TP<code> -P<device> -F<absolute path to unified.hex> -M -OL
   **Flash Unified Hex**, confirm the ipecmd output in the **MPLAB Shortcuts**
   channel and that the device starts running.
 
+## 0.3.3 — Strip PIC prefix for ipecmd -P
+- Reported failure: ipecmd ran but errored with
+  `Could not find device:PICPIC18F26K83` and
+  `Unable to locate DFP, Please install required pack...`.
+- Root cause: ipecmd internally prepends `PIC` to whatever follows `-P`, so
+  `-PPIC18F26K83` becomes a lookup for `PICPIC18F26K83`. Confirmed by re-running
+  the same command with `-P18F26K83` — programming/verify completed cleanly
+  against an attached ICD 5.
+- Fix: strip leading `/^PIC/i` from `config.device || config.targetDevice`
+  before passing to `-P`. The full MPLAB-style name is still shown in the
+  output channel header and the progress-notification title so the user sees
+  a recognizable name.
+- Note: this matches how ipecmd is documented in older `pk2cmd` / `ipecmd`
+  references too — part names are supplied without the family prefix.
+
 ## 0.3.2 — Recognize the newer "ICD 5" tool-name format
 - Reported failure: on `dr1-security-app.X` the command bailed with
   `Cannot determine programmer ... .mplab.json tool="ICD 5"`. The literal
