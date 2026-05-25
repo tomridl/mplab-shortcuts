@@ -1,0 +1,13 @@
+{
+  "tasks": [
+    { "id": 1, "title": "Add flashDevice command to package.json contributes.commands", "status": "completed" },
+    { "id": 2, "title": "Implement flashDevice() in src/extension.ts: read .mplab.json, pick config, build (with linked), call mplab-core-da.programDevice", "status": "completed" },
+    { "id": 3, "title": "Register mplab-shortcuts.flashDevice command in activate()", "status": "completed" },
+    { "id": 4, "title": "Add 'flashDevice' case in webview onDidReceiveMessage switch", "status": "completed" },
+    { "id": 5, "title": "Add Flash Device button to webview HTML + click handler", "status": "completed" },
+    { "id": 6, "title": "Update README.md (feature, commands table, release notes)", "status": "completed" },
+    { "id": 7, "title": "Update CHANGELOG.md with 0.2.0 entry", "status": "completed" },
+    { "id": 8, "title": "Compile TypeScript and verify no errors", "status": "completed" },
+    { "id": 9, "title": "Bump package.json version to 0.2.0 to match docs", "status": "completed" }
+  ]
+}

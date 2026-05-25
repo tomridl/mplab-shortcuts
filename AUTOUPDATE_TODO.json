@@ -1,0 +1,10 @@
+{
+  "tasks": [
+    { "id": 1, "title": "Add auto-update settings + checkForUpdates command to package.json", "status": "completed" },
+    { "id": 2, "title": "Implement update-check logic in src/extension.ts (fetch latest release, version compare, prompt, download, install, reload)", "status": "completed" },
+    { "id": 3, "title": "Register mplab-shortcuts.checkForUpdates command and kick off background check from activate()", "status": "completed" },
+    { "id": 4, "title": "Compile TypeScript and verify no errors", "status": "completed" },
+    { "id": 5, "title": "Update README.md (feature description, settings table, commands table, release notes)", "status": "completed" },
+    { "id": 6, "title": "Update CHANGELOG.md with auto-update entry", "status": "completed" }
+  ]
+}

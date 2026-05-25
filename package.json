@@ -2,7 +2,7 @@
   "name": "mplab-shortcuts",
   "displayName": "MPLAB Shortcuts",
   "description": "Some additional shortcuts for MPLAB extension",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -49,10 +49,53 @@
         "title": "MPLAB: Export Hex"
       },
       {
+        "command": "mplab-shortcuts.buildMerge",
+        "title": "MPLAB: Build Linked + Merge (Unified Hex)"
+      },
+      {
+        "command": "mplab-shortcuts.flashDevice",
+        "title": "MPLAB: Flash Device"
+      },
+      {
+        "command": "mplab-shortcuts.checkForUpdates",
+        "title": "MPLAB: Check for Updates"
+      },
+      {
         "command": "mplab-shortcuts.listCommands",
         "title": "MPLAB: List Available Commands"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "MPLAB Shortcuts",
+      "properties": {
+        "mplab-shortcuts.cmakePath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the cmake executable. Leave empty to auto-detect (PATH, then /opt/homebrew/bin/cmake)."
+        },
+        "mplab-shortcuts.hexmatePath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the XC8 hexmate executable. Leave empty to auto-detect the newest /Applications/microchip/xc8/v*/pic/bin/hexmate."
+        },
+        "mplab-shortcuts.autoUpdate.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically check GitHub Releases for a newer version of this extension and prompt to install."
+        },
+        "mplab-shortcuts.autoUpdate.checkIntervalHours": {
+          "type": "number",
+          "default": 24,
+          "minimum": 1,
+          "description": "How often (in hours) to check GitHub Releases for updates. Manual checks via 'MPLAB: Check for Updates' ignore this interval."
+        },
+        "mplab-shortcuts.autoUpdate.repository": {
+          "type": "string",
+          "default": "tomridl/mplab-shortcuts",
+          "description": "GitHub repository (owner/name) to check for releases. Change this if you forked the extension."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
