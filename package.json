@@ -2,7 +2,7 @@
   "name": "mplab-shortcuts",
   "displayName": "MPLAB Shortcuts",
   "description": "Some additional shortcuts for MPLAB extension",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "tomridl",
   "license": "MIT",
   "repository": {
@@ -59,6 +59,10 @@
         "title": "MPLAB: Flash Device"
       },
       {
+        "command": "mplab-shortcuts.flashUnified",
+        "title": "MPLAB: Flash Unified Hex"
+      },
+      {
         "command": "mplab-shortcuts.checkForUpdates",
         "title": "MPLAB: Check for Updates"
       },
@@ -79,6 +83,16 @@
           "type": "string",
           "default": "",
           "description": "Path to the XC8 hexmate executable. Leave empty to auto-detect the newest /Applications/microchip/xc8/v*/pic/bin/hexmate."
+        },
+        "mplab-shortcuts.ipecmdPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the MPLAB ipecmd.sh CLI programmer (used by 'Flash Unified Hex'). Leave empty to auto-detect the newest /Applications/microchip/mplabx/v*/mplab_platform/mplab_ipe/ipecmd.sh."
+        },
+        "mplab-shortcuts.flashUnified.tool": {
+          "type": "string",
+          "default": "",
+          "description": "Fallback ipecmd '-TP' programmer code (e.g., PK4, PK5, SN, ICD4, ICD5) for 'Flash Unified Hex' when the .mplab.json config has no specific tool (e.g., 'default-tool')."
         },
         "mplab-shortcuts.autoUpdate.enabled": {
           "type": "boolean",

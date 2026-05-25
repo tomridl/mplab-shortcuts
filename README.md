@@ -10,6 +10,7 @@ A VS Code extension that adds a convenient side panel with quick-access buttons 
 - **Export Hex**: Export your compiled `.hex` file with a smart save dialog that suggests a filename based on your project name and firmware version
 - **Build Linked + Merge (Unified Hex)**: Build any linked (loadable) projects, then the main project, and merge the results into a single unified `.hex` with `hexmate` — e.g. combine a bootloader with its application image
 - **Flash Device**: Pick a build configuration, build it (and any linked loadables), then program the connected programmer via MPLAB's built-in **Program Device** command
+- **Flash Unified Hex**: Build + merge linked loadables into a unified hex, then flash that exact file directly via Microchip's `ipecmd` CLI — independent of MPLAB IDE's active configuration
 - **Auto-update from GitHub Releases**: The extension periodically checks its GitHub repository for a newer `.vsix` and prompts to install — no Marketplace required
 
 ### Export Hex Features
@@ -51,6 +52,30 @@ The build step requires the per-config build directory to have been emitted by M
 (open/emit the project first). The flashing itself relies on MPLAB's active
 programmer selection — the same one used by MPLAB's own **Program Device** action.
 
+### Flash Unified Hex
+
+Same flow as **Build Linked + Merge**, but after producing the unified hex it
+flashes that exact file via Microchip's CLI programmer (`ipecmd.sh`). Unlike
+**Flash Device**, this does not depend on MPLAB IDE's active configuration —
+the hex you just built is the hex that gets programmed.
+
+What it does:
+
+- Runs the full **Build Linked + Merge** flow (config picker → build linked +
+  main → `hexmate` → `out/<project>/<config>-unified.hex`)
+- Reads the picked configuration from `.vscode/<project>.mplab.json` to get the
+  target **device** (`device` or `targetDevice`) and the **tool** (`tool` or
+  `platformTool`)
+- Maps the MPLAB tool name (e.g., `ICD5Tool`, `PICkit4Tool`, `SnapTool`) to the
+  corresponding `ipecmd` `-TP` code; if the configuration has no specific tool
+  (`default-tool`) it falls back to `mplab-shortcuts.flashUnified.tool`
+- Runs `ipecmd.sh -TP<tool> -P<device> -F<unified.hex> -M -OL`, streaming output
+  to the **MPLAB Shortcuts** channel
+
+Requires `ipecmd.sh` from MPLAB X (auto-detected from
+`/Applications/microchip/mplabx/v*/mplab_platform/mplab_ipe/`, override via
+`mplab-shortcuts.ipecmdPath`).
+
 ### Auto-update from GitHub Releases
 
 Since this extension isn't on the VS Code Marketplace, the built-in extension
@@ -84,6 +109,7 @@ The auto-updater will pick it up on every other user's next check.
 - [MPLAB Extension Pack](https://marketplace.visualstudio.com/items?itemName=microchip.mplab-extension-pack) must be installed
 - A valid MPLAB project open in VS Code
 - For **Build Linked + Merge**: `cmake` and the XC8 `hexmate` tool (both auto-detected; see Configuration)
+- For **Flash Unified Hex**: MPLAB X `ipecmd.sh` (auto-detected from the newest installed MPLAB X) and a supported programmer (PICkit, ICD, Snap, …)
 
 ## Configuration
 
@@ -91,6 +117,8 @@ The auto-updater will pick it up on every other user's next check.
 |---------|-------------|
 | `mplab-shortcuts.cmakePath` | Path to the `cmake` executable. Leave empty to auto-detect (PATH, then `/opt/homebrew/bin/cmake`). |
 | `mplab-shortcuts.hexmatePath` | Path to the XC8 `hexmate` executable. Leave empty to auto-detect the newest `/Applications/microchip/xc8/v*/pic/bin/hexmate`. |
+| `mplab-shortcuts.ipecmdPath` | Path to the MPLAB `ipecmd.sh` CLI programmer (used by **Flash Unified Hex**). Leave empty to auto-detect the newest `/Applications/microchip/mplabx/v*/mplab_platform/mplab_ipe/ipecmd.sh`. |
+| `mplab-shortcuts.flashUnified.tool` | Fallback ipecmd `-TP` code (e.g. `PK4`, `PK5`, `SN`, `ICD4`, `ICD5`) used when the `.mplab.json` configuration has no specific tool (e.g. `default-tool`). |
 | `mplab-shortcuts.autoUpdate.enabled` | Periodically check GitHub Releases for a newer `.vsix` and prompt to install. Default `true`. |
 | `mplab-shortcuts.autoUpdate.checkIntervalHours` | How often (hours) to check for updates. Default `24`. |
 | `mplab-shortcuts.autoUpdate.repository` | GitHub repo (`owner/name`) to query. Defaults to `tomridl/mplab-shortcuts`. |
@@ -106,10 +134,21 @@ The following commands are available via the Command Palette (Ctrl/Cmd+Shift+P):
 | `MPLAB: Export Hex` | Export the hex file with version info |
 | `MPLAB: Build Linked + Merge (Unified Hex)` | Build linked (loadable) projects, then the main project, and merge into a unified hex |
 | `MPLAB: Flash Device` | Pick a configuration, build it, and flash via MPLAB's Program Device |
+| `MPLAB: Flash Unified Hex` | Build + merge linked loadables into a unified hex, then flash it directly via `ipecmd` |
 | `MPLAB: Check for Updates` | Force an immediate GitHub Releases check for a newer version |
 | `MPLAB: List Available Commands` | Show all available MPLAB commands |
 
 ## Release Notes
+
+### 0.3.0
+
+- Added **Flash Unified Hex**: builds the linked loadables + main project,
+  merges them with `hexmate`, then programs the resulting unified hex directly
+  via Microchip's `ipecmd` CLI — independent of MPLAB IDE's active configuration
+- Auto-detects the target **device** and **programmer tool** from the picked
+  configuration in `.vscode/<project>.mplab.json`
+- Added `mplab-shortcuts.ipecmdPath` and `mplab-shortcuts.flashUnified.tool`
+  settings
 
 ### 0.2.0
 

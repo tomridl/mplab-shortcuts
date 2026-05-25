@@ -39,6 +39,9 @@ class MplabShortcutsViewProvider implements vscode.WebviewViewProvider {
 				case 'flashDevice':
 					await flashDevice();
 					break;
+				case 'flashUnified':
+					await flashUnified();
+					break;
 			}
 		});
 	}
@@ -125,6 +128,10 @@ class MplabShortcutsViewProvider implements vscode.WebviewViewProvider {
 			<span class="icon">⚡</span>
 			Flash Device
 		</button>
+		<button id="flashUnifiedBtn">
+			<span class="icon">🚀</span>
+			Flash Unified Hex
+		</button>
 	</div>
 	<script>
 		const vscode = acquireVsCodeApi();
@@ -147,6 +154,10 @@ class MplabShortcutsViewProvider implements vscode.WebviewViewProvider {
 
 		document.getElementById('flashDeviceBtn').addEventListener('click', () => {
 			vscode.postMessage({ command: 'flashDevice' });
+		});
+
+		document.getElementById('flashUnifiedBtn').addEventListener('click', () => {
+			vscode.postMessage({ command: 'flashUnified' });
 		});
 	</script>
 </body>
@@ -191,6 +202,12 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand('mplab-shortcuts.flashDevice', async () => {
 			await flashDevice();
+		})
+	);
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand('mplab-shortcuts.flashUnified', async () => {
+			await flashUnified();
 		})
 	);
 
@@ -497,11 +514,17 @@ function runStreamed(cmd: string, args: string[], cwd: string, out: vscode.Outpu
 	});
 }
 
-async function buildLinkedAndMerge() {
+interface BuildMergeResult {
+	unifiedHex: string;
+	configName: string;
+	mplab: any;
+}
+
+async function buildLinkedAndMerge(options?: { silentOnSuccess?: boolean }): Promise<BuildMergeResult | undefined> {
 	const workspaceFolders = vscode.workspace.workspaceFolders;
 	if (!workspaceFolders || workspaceFolders.length === 0) {
 		vscode.window.showErrorMessage('No workspace folder open.');
-		return;
+		return undefined;
 	}
 
 	const ws = workspaceFolders[0];
@@ -517,7 +540,7 @@ async function buildLinkedAndMerge() {
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error);
 		vscode.window.showErrorMessage(`Could not read .vscode/${mainProject}.mplab.json: ${msg}`);
-		return;
+		return undefined;
 	}
 
 	// Find configurations that have linked (loadable) projects
@@ -528,7 +551,7 @@ async function buildLinkedAndMerge() {
 		vscode.window.showWarningMessage(
 			`No linked (loadable) projects found in any configuration of ${mainProject}.`
 		);
-		return;
+		return undefined;
 	}
 
 	let configName: string | undefined = mergeable[0];
@@ -537,7 +560,7 @@ async function buildLinkedAndMerge() {
 			placeHolder: 'Select the configuration to build and merge'
 		});
 		if (!configName) {
-			return;
+			return undefined;
 		}
 	}
 
@@ -550,7 +573,7 @@ async function buildLinkedAndMerge() {
 		vscode.window.showErrorMessage(
 			'hexmate not found. Set "mplab-shortcuts.hexmatePath" to your XC8 hexmate executable.'
 		);
-		return;
+		return undefined;
 	}
 
 	const out = getOutputChannel();
@@ -559,9 +582,9 @@ async function buildLinkedAndMerge() {
 	out.appendLine(`Build + merge for ${mainProject}:${configName}`);
 	out.appendLine(`Linked projects: ${linked.map(l => `${l.projectName}:${l.config}`).join(', ') || '(none)'}`);
 
-	await vscode.window.withProgress(
+	return await vscode.window.withProgress(
 		{ location: vscode.ProgressLocation.Notification, title: 'MPLAB: Build linked + merge', cancellable: false },
-		async (progress) => {
+		async (progress): Promise<BuildMergeResult | undefined> => {
 			// Build linked projects first, then the main project
 			const buildOrder = [
 				...linked.map(l => ({ project: l.projectName, config: l.config })),
@@ -574,14 +597,14 @@ async function buildLinkedAndMerge() {
 					vscode.window.showErrorMessage(
 						`Build directory not found: ${buildDir}. Open/emit ${target.project}:${target.config} in MPLAB first.`
 					);
-					return;
+					return undefined;
 				}
 				progress.report({ message: `Building ${target.project}:${target.config}` });
 				out.appendLine(`\n=== Building ${target.project} : ${target.config} ===`);
 				const ok = await runStreamed(cmake, ['--build', buildDir, '--parallel'], wsPath, out);
 				if (!ok) {
 					vscode.window.showErrorMessage(`Build failed: ${target.project}:${target.config} (see "MPLAB Shortcuts" output).`);
-					return;
+					return undefined;
 				}
 			}
 
@@ -594,7 +617,7 @@ async function buildLinkedAndMerge() {
 			for (const h of [mainHex, ...linkedHexes]) {
 				if (!fs.existsSync(h)) {
 					vscode.window.showErrorMessage(`Expected hex not found after build: ${h}`);
-					return;
+					return undefined;
 				}
 			}
 
@@ -605,11 +628,14 @@ async function buildLinkedAndMerge() {
 			const merged = await runStreamed(hexmate, [...linkedHexes, mainHex, `-o${unifiedHex}`], wsPath, out);
 			if (!merged) {
 				vscode.window.showErrorMessage('hexmate merge failed (see "MPLAB Shortcuts" output).');
-				return;
+				return undefined;
 			}
 
 			out.appendLine(`\nUnified hex created: ${unifiedHex}`);
-			vscode.window.showInformationMessage(`Unified hex created: ${unifiedHex}`);
+			if (!options?.silentOnSuccess) {
+				vscode.window.showInformationMessage(`Unified hex created: ${unifiedHex}`);
+			}
+			return { unifiedHex, configName: configName!, mplab };
 		}
 	);
 }
@@ -712,6 +738,134 @@ async function flashDevice() {
 				vscode.window.showErrorMessage(`Failed to flash device: ${errorMessage}`);
 				out.appendLine(`\n[error] ${errorMessage}`);
 			}
+		}
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Flash unified hex: build + hexmate-merge, then program the merged image via
+// MPLAB's ipecmd CLI (independent of MPLAB IDE's active configuration).
+// ---------------------------------------------------------------------------
+
+/** Resolve the MPLAB ipecmd.sh CLI (setting → newest installed MPLAB X). */
+function resolveIpecmd(): string | undefined {
+	const configured = vscode.workspace.getConfiguration('mplab-shortcuts').get<string>('ipecmdPath');
+	if (configured) {
+		return fs.existsSync(configured) ? configured : undefined;
+	}
+	const root = '/Applications/microchip/mplabx';
+	try {
+		const versions = fs.readdirSync(root)
+			.filter(v => /^v[0-9.]+$/.test(v))
+			.sort()
+			.reverse();
+		for (const v of versions) {
+			const candidate = path.join(v, 'mplab_platform', 'mplab_ipe', 'ipecmd.sh');
+			const abs = path.join(root, candidate);
+			if (fs.existsSync(abs)) {
+				return abs;
+			}
+		}
+	} catch {
+		// fall through
+	}
+	return undefined;
+}
+
+/** Map MPLAB tool identifiers (as found in .mplab.json) to ipecmd -TP codes. */
+function mapMplabToolToIpecmd(name?: string): string | undefined {
+	if (!name) {
+		return undefined;
+	}
+	const table: Record<string, string> = {
+		'PICkit3Tool': 'PICkit3',
+		'PICkit4Tool': 'PK4',
+		'PICkit5Tool': 'PK5',
+		'ICD3Tool': 'ICD3',
+		'ICD4Tool': 'ICD4',
+		'ICD5Tool': 'ICD5',
+		'SnapTool': 'SN',
+		'RealICETool': 'RealICE',
+		'JTAGICE3Tool': 'JTAGICE3',
+		'Simulator': 'SIM'
+	};
+	return table[name];
+}
+
+async function flashUnified() {
+	const workspaceFolders = vscode.workspace.workspaceFolders;
+	if (!workspaceFolders || workspaceFolders.length === 0) {
+		vscode.window.showErrorMessage('No workspace folder open.');
+		return;
+	}
+
+	const built = await buildLinkedAndMerge({ silentOnSuccess: true });
+	if (!built) {
+		return; // error already shown / user cancelled
+	}
+
+	const config = (built.mplab.configurations || []).find((c: any) => c.name === built.configName);
+	if (!config) {
+		vscode.window.showErrorMessage(`Configuration "${built.configName}" not found in .mplab.json.`);
+		return;
+	}
+
+	const device: string | undefined = config.device || config.targetDevice;
+	if (!device) {
+		vscode.window.showErrorMessage(
+			`No device specified in configuration "${built.configName}" (.mplab.json: device/targetDevice).`
+		);
+		return;
+	}
+
+	const mplabTool: string | undefined = config.tool || config.platformTool;
+	let toolCode = mapMplabToolToIpecmd(mplabTool);
+	if (!toolCode) {
+		const fallback = vscode.workspace.getConfiguration('mplab-shortcuts').get<string>('flashUnified.tool');
+		if (fallback) {
+			toolCode = fallback;
+		}
+	}
+	if (!toolCode) {
+		vscode.window.showErrorMessage(
+			`Cannot determine programmer for "${built.configName}" ` +
+			`(.mplab.json tool="${mplabTool ?? 'unset'}"). ` +
+			`Set "mplab-shortcuts.flashUnified.tool" to your ipecmd -TP code ` +
+			`(e.g., PK4, PK5, SN, ICD4, ICD5).`
+		);
+		return;
+	}
+
+	const ipecmd = resolveIpecmd();
+	if (!ipecmd) {
+		vscode.window.showErrorMessage(
+			'ipecmd.sh not found. Set "mplab-shortcuts.ipecmdPath" to your MPLAB ipecmd.sh executable.'
+		);
+		return;
+	}
+
+	const out = getOutputChannel();
+	out.show(true);
+	out.appendLine(`\n=== Flashing unified hex via ipecmd ===`);
+	out.appendLine(`Tool: ${toolCode}   Device: ${device}`);
+	out.appendLine(`Hex:  ${built.unifiedHex}`);
+
+	await vscode.window.withProgress(
+		{ location: vscode.ProgressLocation.Notification, title: `MPLAB: Flash unified (${toolCode} → ${device})`, cancellable: false },
+		async () => {
+			const ok = await runStreamed(
+				ipecmd,
+				[`-TP${toolCode}`, `-P${device}`, `-F${built.unifiedHex}`, '-M', '-OL'],
+				workspaceFolders[0].uri.fsPath,
+				out
+			);
+			if (!ok) {
+				vscode.window.showErrorMessage('ipecmd failed to program the device (see "MPLAB Shortcuts" output).');
+				return;
+			}
+			vscode.window.showInformationMessage(
+				`Flashed ${path.basename(built.unifiedHex)} via ${toolCode}.`
+			);
 		}
 	);
 }

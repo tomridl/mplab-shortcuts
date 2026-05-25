@@ -1,0 +1,72 @@
+{
+  "version": "0.3.0",
+  "feature": "Flash Unified Hex",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "Write FLASH_UNIFIED_PLAN.md + FLASH_UNIFIED_TODO.json",
+      "status": "completed",
+      "files": ["FLASH_UNIFIED_PLAN.md", "FLASH_UNIFIED_TODO.json"]
+    },
+    {
+      "id": 2,
+      "title": "Update package.json: command, settings, version bump",
+      "status": "completed",
+      "files": ["package.json"],
+      "details": [
+        "Bumped version to 0.3.0",
+        "Added command mplab-shortcuts.flashUnified (\"MPLAB: Flash Unified Hex\")",
+        "Added setting mplab-shortcuts.ipecmdPath (string, auto-detect)",
+        "Added setting mplab-shortcuts.flashUnified.tool (string, fallback for default-tool)"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Implement flashUnified() in extension.ts",
+      "status": "completed",
+      "files": ["src/extension.ts"],
+      "details": [
+        "Refactored buildLinkedAndMerge to return { unifiedHex, configName, mplab } with optional silentOnSuccess",
+        "Added resolveIpecmd() (newest /Applications/microchip/mplabx/v*/mplab_platform/mplab_ipe/ipecmd.sh)",
+        "Added mapMplabToolToIpecmd() table: PICkit3/4/5, ICD3/4/5, Snap, RealICE, JTAGICE3, Simulator",
+        "flashUnified(): pick config -> build+merge -> read device/tool -> map tool -> resolve ipecmd -> spawn streamed"
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Webview UI + command registration",
+      "status": "completed",
+      "files": ["src/extension.ts"],
+      "details": [
+        "Added \"Flash Unified Hex\" button in webview HTML",
+        "Wired 'flashUnified' message handler case",
+        "Registered mplab-shortcuts.flashUnified command in activate()"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Compile + lint clean",
+      "status": "completed",
+      "commands": ["npm run compile", "npm run lint"],
+      "result": "Both clean, no errors"
+    },
+    {
+      "id": 6,
+      "title": "Update README.md, CHANGELOG.md, SESSION_NOTES.md",
+      "status": "completed",
+      "files": ["README.md", "CHANGELOG.md", "SESSION_NOTES.md"],
+      "details": [
+        "Documented new button, command, settings under 0.3.0",
+        "Appended session notes with schema findings + tool-name mapping table + trade-offs"
+      ]
+    }
+  ],
+  "out_of_scope": [
+    "Auto-detection of attached programmer via ipecmd -?TP",
+    "Programmer power/voltage option flags",
+    "Post-flash verify (-Y)"
+  ],
+  "next_steps": [
+    "Open a real bootloader project with linked loadables; click Flash Unified Hex; verify ipecmd output in the MPLAB Shortcuts channel and that the device runs after programming"
+  ]
+}

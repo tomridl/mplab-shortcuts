@@ -103,3 +103,108 @@ tag push.
 - `npm run compile` clean.
 - Not exercised at runtime — needs a real release to be cut on the
   `tomridl/mplab-shortcuts` repo before the update prompt will fire.
+
+---
+
+# Flash Unified Hex (0.3.0)
+
+## What was added
+- New side-panel button "🚀 Flash Unified Hex" + matching command
+  `mplab-shortcuts.flashUnified` ("MPLAB: Flash Unified Hex").
+- Flow: pick config (filtered to those with linked loadables) → build linked
+  loadables + main project → `hexmate` merge → flash the resulting
+  `out/<project>/<config>-unified.hex` directly via Microchip's `ipecmd.sh`.
+- Two new settings: `mplab-shortcuts.ipecmdPath` (auto-detect newest MPLAB X)
+  and `mplab-shortcuts.flashUnified.tool` (fallback `-TP` code when the
+  configuration's `tool` is `default-tool`).
+- Version bumped to 0.3.0; README and CHANGELOG updated.
+
+## Why a second flash command (vs. extending `flashDevice`)
+- `mplab-core-da.programDevice` programs whatever **MPLAB's active
+  configuration** points at, with no way to pass a specific hex path. So that
+  command cannot flash the hexmate-merged unified hex.
+- `ipecmd` accepts an arbitrary `-F<hexfile>`, decoupling the flash from
+  MPLAB's UI state. Keeping the two commands separate makes the distinction
+  obvious in the UI and in the command palette.
+
+## .mplab.json schema findings (verified against real projects)
+Two schema versions exist:
+
+| Field          | v1.9 (XC8 / PIC18) | v1.3 (XC32 / PIC32) |
+| -------------- | ------------------ | ------------------- |
+| Target device  | `device`           | `targetDevice`      |
+| Programmer     | `tool`             | `platformTool`      |
+
+Sample v1.9 config snippet (qt6-can-boot):
+```json
+{ "device": "PIC18F26K80", "tool": "ICD5Tool", ... }
+```
+Sample v1.3 config snippet (PIC32TestBle): `targetDevice: "PIC32CX5109BZ31048"`,
+`platformTool: "default-tool"` (no specific tool selected → fall back to setting).
+
+Resolution in code:
+```ts
+const device = config.device || config.targetDevice;
+const tool   = config.tool   || config.platformTool;
+```
+
+## MPLAB tool → ipecmd `-TP` mapping table (implemented)
+| MPLAB identifier | ipecmd `-TP` |
+| ---------------- | ------------ |
+| `PICkit3Tool`    | `PICkit3`    |
+| `PICkit4Tool`    | `PK4`        |
+| `PICkit5Tool`    | `PK5`        |
+| `ICD3Tool`       | `ICD3`       |
+| `ICD4Tool`       | `ICD4`       |
+| `ICD5Tool`       | `ICD5`       |
+| `SnapTool`       | `SN`         |
+| `RealICETool`    | `RealICE`    |
+| `JTAGICE3Tool`   | `JTAGICE3`   |
+| `Simulator`      | `SIM`        |
+| `default-tool` / unknown | — (uses `mplab-shortcuts.flashUnified.tool` fallback) |
+
+## ipecmd invocation
+```
+ipecmd.sh -TP<code> -P<device> -F<absolute path to unified.hex> -M -OL
+```
+- `-M` programs the device.
+- `-OL` releases MCLR so the device runs after programming.
+- All paths absolute (avoids cwd surprises since `cp.spawn`'s `cwd` is the
+  workspace root).
+
+## Refactor for reuse
+- `buildLinkedAndMerge` now returns `{ unifiedHex, configName, mplab } | undefined`
+  and accepts `{ silentOnSuccess }`. `flashUnified()` calls it with
+  `silentOnSuccess: true` so the user only sees one final "Flashed ..." toast.
+- The existing webview button keeps its old "Unified hex created: ..." toast
+  because it does not pass `silentOnSuccess`.
+
+## Trade-offs / open questions
+- We don't auto-detect the connected programmer via `ipecmd -?TP`. If the
+  `.mplab.json` tool is `default-tool` and the fallback setting is empty, we
+  error out with a clear message asking the user to set
+  `mplab-shortcuts.flashUnified.tool`. Could be smarter later.
+- We don't pass any power/voltage flags. ICDs/PICkits used externally don't
+  need them; target-powered setups may. Add a setting if it becomes a problem.
+- We don't run a verify step (`-Y`). ipecmd already reports CRC after `-M`;
+  adding `-Y` would roughly double flash time.
+- The tool-name table covers the common MPLAB X identifiers seen in current
+  projects. If MPLAB introduces a new programmer with a different identifier
+  the user can override via the fallback setting until the table is updated.
+
+## Files touched (Flash Unified)
+- `package.json` — version 0.3.0, new command, two new settings.
+- `src/extension.ts` — `resolveIpecmd`, `mapMplabToolToIpecmd`, `flashUnified`,
+  `buildLinkedAndMerge` refactor + reuse, webview button + handler, command
+  registration.
+- `README.md`, `CHANGELOG.md` — documented under 0.3.0.
+- `FLASH_UNIFIED_PLAN.md`, `FLASH_UNIFIED_TODO.json` — planning artifacts per
+  the user's Planning Policy.
+
+## Build verification (Flash Unified)
+- `npm run compile` clean.
+- `npm run lint` clean.
+- Runtime: not exercised in a live MPLAB workspace from this session. Next
+  step for the user: open a bootloader project with linked loadables, click
+  **Flash Unified Hex**, confirm the ipecmd output in the **MPLAB Shortcuts**
+  channel and that the device starts running.

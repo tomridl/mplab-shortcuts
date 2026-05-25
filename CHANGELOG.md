@@ -4,6 +4,19 @@ All notable changes to the "mplab-shortcuts" extension will be documented in thi
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.0]
+
+- Added **Flash Unified Hex** command and side-panel button: runs the Build
+  Linked + Merge flow, then programs the resulting unified hex directly via
+  Microchip's `ipecmd.sh` CLI — independent of MPLAB IDE's active configuration
+- Auto-detects the target device (from `device` / `targetDevice`) and the
+  programmer tool (from `tool` / `platformTool`) in `.vscode/<project>.mplab.json`,
+  mapping MPLAB tool identifiers (e.g. `ICD5Tool`, `PICkit4Tool`, `SnapTool`)
+  to the corresponding `ipecmd -TP` codes
+- Added `mplab-shortcuts.ipecmdPath` setting (auto-detected from the newest
+  installed MPLAB X) and `mplab-shortcuts.flashUnified.tool` (fallback `-TP`
+  code when the config has no specific tool)
+
 ## [0.2.0]
 
 - Added **Flash Device** command and side-panel button: prompts for a build
